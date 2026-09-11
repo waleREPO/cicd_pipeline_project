@@ -1,3 +1,12 @@
+resource "aws_cloudwatch_log_group" "ecs_task" {
+  name              = "/ecs/${var.project_name}"
+  retention_in_days = 7
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
 resource "aws_ecs_cluster" "app" {
   name = "${var.project_name}-cluster"
 
@@ -34,7 +43,7 @@ resource "aws_ecs_task_definition" "app" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/${var.project_name}"
+          "awslogs-group"         = aws_cloudwatch_log_group.ecs_task.name
           "awslogs-region"        = var.aws_region
           "awslogs-stream-prefix" = "ecs"
         }

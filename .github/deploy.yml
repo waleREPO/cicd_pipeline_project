@@ -4,17 +4,15 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_REGION: us-east-1
   ECR_REPOSITORY: cicd-pipeline-repo
   ECS_CLUSTER: cicd-pipeline-cluster
   ECS_SERVICE: cicd-pipeline-service
   ECS_TASK_DEFINITION: cicd-pipeline-task
-
-permissions:
-  contents: read
-  id-token: write
+  ALB_NAME: cicd-pipeline-alb
 
 jobs:
   build-and-deploy:
@@ -49,7 +47,6 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_ENV
 
       # Step 5: Force new deployment in ECS
       - name: Deploy to ECS
@@ -69,22 +66,23 @@ jobs:
             --services ${{ env.ECS_SERVICE }} \
             --region ${{ env.AWS_REGION }}
 
-      # Step 7: Get ALB URL and verify
+      # Step 7: Get ALB URL
       - name: Get application URL
         run: |
           ALB_DNS=$(aws elbv2 describe-load-balancers \
-            --names cicd-pipeline-alb \
+            --names ${{ env.ALB_NAME }} \
             --query 'LoadBalancers[0].DNSName' \
             --output text \
             --region ${{ env.AWS_REGION }})
           echo "Application URL: http://$ALB_DNS"
           echo "ALB_DNS=$ALB_DNS" >> $GITHUB_ENV
 
+      # Step 8: Verify deployment
       - name: Verify deployment
         run: |
           sleep 30
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ env.ALB_DNS }})
-          if [ $RESPONSE -eq 200 ]; then
+          if [ "$RESPONSE" -eq 200 ]; then
             echo "✅ Deployment successful! App is running."
             curl -s http://${{ env.ALB_DNS }}
           else

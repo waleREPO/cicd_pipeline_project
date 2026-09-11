@@ -53,8 +53,18 @@ resource "aws_security_group" "app" {
   description = "Allow HTTP inbound traffic"
   vpc_id      = aws_vpc.main.id
 
+  # ✅ ADDED: allow ALB listener on port 80
   ingress {
-    description = "HTTP from anywhere"
+    description = "HTTP from anywhere (ALB)"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # EXISTING: allow app container port
+  ingress {
+    description = "App port from anywhere"
     from_port   = var.app_port
     to_port     = var.app_port
     protocol    = "tcp"
