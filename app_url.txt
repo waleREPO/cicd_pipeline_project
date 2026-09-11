@@ -1,1 +1,0 @@
-http://cicd-pipeline-alb-1237353315.us-east-1.elb.amazonaws.com
